@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, send_from_directory, abort, Response, redirect, url_for
+from flask import Flask, request, render_template, send_from_directory, abort, Response
 from functools import wraps
 import os
 import time
@@ -77,13 +77,6 @@ def allowed_file(filename):
     """허용된 파일 형식 확인"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.before_request
-def before_request():
-    """HTTPS 리디렉션"""
-    if not request.is_secure and not app.debug:
-        url = request.url.replace("http://", "https://", 1)
-        return redirect(url, code=301)
-
 @app.route('/')
 def index():
     files = os.listdir(app.config['UPLOAD_FOLDER'])
@@ -109,4 +102,4 @@ def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
-    app.run(port=8000)
+    app.run(port=5000)
