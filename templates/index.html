@@ -62,6 +62,10 @@
         a:hover {
             text-decoration: underline;
         }
+        .file-info {
+            color: #666;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -75,7 +79,10 @@
         <h2>Available Files for Download</h2>
         <ul>
             {% for file in files %}
-            <li><a href="/download/{{ file }}">{{ file }}</a></li>
+            <li>
+                <a href="/download/{{ file.filename }}">{{ file.filename }}</a>
+                <div class="file-info">Uploaded on: {{ file.upload_date }}</div>
+            </li>
             {% endfor %}
         </ul>
     </div>

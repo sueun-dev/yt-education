@@ -1,4 +1,6 @@
-from flask import Flask, request, render_template, send_from_directory, abort, Response
+from flask import Flask, request, render_template, send_from_directory, abort, Response, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from functools import wraps
 import os
 import time
@@ -8,6 +10,14 @@ load_dotenv()  # 환경 변수 로드
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY')  # 비밀 키 설정
+
+# 데이터베이스 설정
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # PostgreSQL URI 가져오기
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
@@ -77,9 +87,18 @@ def allowed_file(filename):
     """허용된 파일 형식 확인"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# DB 모델 정의 (예: PDF 파일 정보를 저장)
+class PDFFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(120), nullable=False)
+    upload_date = db.Column(db.DateTime, nullable=False, default=time.strftime('%Y-%m-%d %H:%M:%S'))
+
+    def __repr__(self):
+        return f"PDFFile('{self.filename}', '{self.upload_date}')"
+
 @app.route('/')
 def index():
-    files = os.listdir(app.config['UPLOAD_FOLDER'])
+    files = PDFFile.query.all()  # 데이터베이스에서 모든 파일을 조회
     return render_template('index.html', files=files)
 
 @app.route('/upload', methods=['POST'])
@@ -93,6 +112,12 @@ def upload_file():
     if file and allowed_file(file.filename):
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(filepath)
+        
+        # 파일 정보를 데이터베이스에 저장
+        new_file = PDFFile(filename=file.filename)
+        db.session.add(new_file)
+        db.session.commit()
+        
         return 'File successfully uploaded'
     else:
         return 'File type not allowed'
@@ -102,4 +127,5 @@ def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
+    db.create_all()  # 데이터베이스 테이블 생성
     app.run(port=5000)
